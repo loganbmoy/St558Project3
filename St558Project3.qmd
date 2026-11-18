@@ -12,41 +12,42 @@ library(scales)
 library(tidymodels)
 library(baguette)
 library(ranger)
+library(bundle)
 ```
 
 
-# EDA of Melbourne House Data from Project 2
+# Description of Melbourne House Data
 
-This code looks at data from the Melbourne Housing Market. I use the MELBOURNE_HOUSE_PRICES_LESS dataset.
+This code looks at data from the Melbourne Housing Market. I use the MELBOURNE_HOUSE_PRICES_FULL dataset.
 The data, gathered from Domain.com.au, contains information about properities' attributes, such as cost, rooms, and type.
 For more information about the dataset, visit https://www.kaggle.com/datasets/anthonypino/melbourne-housing-market.
+
+I am most interested in predicting the price of a home in Melbourne given the attributes of the property. Some predictors that will be used are related to the property itself: rooms, property count, bathrooms, and distance from nearest CBD. Some variables relate to the houses location like latitude, longititude, Council Area, and suburb.
+
+Some of these variables contain unique identifiers or variables with too many levels that would slow down the model. These variables will be modified or left out in order to make the model more efficient.
 
 
 ## Making sure the data is in a good format
 
 ```{r}
-mhData <- read_csv("data/MELBOURNE_HOUSE_PRICES_LESS.csv")
+mhData <- read_csv("data/Melbourne_housing_FULL.csv")
 
-# Date sold split into components
-mhData <- mhData %>% separate_wider_delim(cols = Date,delim = "/", names = c("Day", "Month", "Year"), cols_remove = FALSE) %>%
-  mutate(across(c(Day, Month, Year), as.numeric)) %>%
+# Doing less cleaning here and saving it for the recipe 
+mhData <- mhData %>% 
+  # Not interested in obs we dont have the price/response
+  filter(!is.na(Price)) %>% 
+  # Unique var, date, and seller (not interested)
+  select(-c(Address, SellerG)) %>%
   # Making some cols factors
-  # possibly could bin postcodes and make it a factor, but not sure if binned codes are related to one another
-  mutate(across(c(Rooms, Type, Method, Regionname, CouncilArea, Day, Month, Year), as.factor)) # probably dont care about day being a factor
+  mutate(across(c(Type, Method, Regionname, Suburb, CouncilArea), as.factor)) 
 
-# Labels
-mhData$MethodLab <- factor(mhData$Method, levels = levels(mhData$Method), labels = c("Passed in", "Sold prior not disclosed", "Sold", "Sold after auction", "Sold not disclosed", "Sold prior", "Sold after auction, not disclosed", "Vendor bid" , "Withdrawn"))
+saveRDS(mhData, file = "data/mhData.rds")
 
-mhData$Type <- factor(mhData$Type, levels = levels(mhData$Type), labels = c("house", "townhouse", "unit"))
-
-if (!file.exists("data/mhData.rds")) {
-  saveRDS(mhData, file = "data/mhData.rds")
-}
 
 ```
 
 
-# Splitting data, and doing 5 fold
+## Splitting data and doing 5 fold
 
 ```{r}
 set.seed(711)
@@ -57,5 +58,35 @@ mhData_test <- testing(mhData_split)
 mhData_5_fold <- vfold_cv(mhData_train, 5)
 ```
 
+# Models
+
+To examine this data we want to use a a more flexible model than mlr to model this complex housing data (mlr is fine on more simplier datasets).
+
+In order we use the flexible tree models to fit complex data. The two types that will be used here are the Regression/Classification trees and ensemble trees.
+
+Regression/Classification trees differ based on what the type of data the response variable is. Regression trees are used to model numeric responses and classification trees are used to model binary categorical data.
+
+Trees are made by using an algorithm (usually a greedy one which just picks the immediate best value available) that minimizes the sum of squared error loss to split the predictor space into regions. This process continues based on a value selected by the user.
+
+The loss functions and metrics of regression and classification trees differ as their responses are in different formats (regression can use RMSE, MAD, R-sq and classification uses accuracy or log-loss).
+
+While the Regression tree is useful it does have some weaknesses, such as being very reliant on the data give. Its sensitivity to the data and reliance on selecting strong initial predictors makes the tree makes the data have higher variance and is more correlated with each other. Ensemble models get rid of the weakness of the data due to getting predictors (by averaging or other methods) from multiple trees each constructing from a sample of the data. Random forests in particular use a random number and assortment of predictors to reduce the reliance and correlation of the trees.
+
+## Recipe for the trees, impute here
+
+```{r}
+mh_rec <- recipe(Price ~ ., data = mhData_train) %>%
+  step_impute_median(Bedroom2, Bathroom, Car, Landsize, BuildingArea, YearBuilt, Lattitude, Longtitude) %>% 
+  step_date(Date, features = c("month", "dow", "year"), keep_original_cols = FALSE) %>%
+  step_unknown(all_nominal_predictors())
+```
+
+## Models for Regression and Random Forest model
+
+We use the RMSE as the metric as it.
 
 
+## Fitting the model to get the best of each type
+
+
+## Best model gets fitted to the entire data, saved with bundle
