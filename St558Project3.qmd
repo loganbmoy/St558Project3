@@ -24,7 +24,7 @@ For more information about the dataset, visit https://www.kaggle.com/datasets/an
 
 I am most interested in predicting the price of a home in Melbourne given the attributes of the property. Some predictors that will be used are related to the property itself: rooms, property count, bathrooms, and distance from nearest CBD. Some variables relate to the houses location like latitude, longititude, Council Area, and suburb.
 
-Some of these variables contain unique identifiers or variables with too many levels that would slow down the model. These variables will be modified or left out in order to make the model more efficient.
+Some of these variables contain unique identifiers or variables with too many levels that would slow down the model. These variables will be modified or left out in order to make the model more efficient. There is also a transformation done on Price (taking log of it) to reduce the impact of outliers.
 
 
 ## Making sure the data is in a good format
@@ -39,7 +39,8 @@ mhData <- mhData %>%
   # Unique var, date, and seller (not interested)
   select(-c(Address, SellerG)) %>%
   # Making some cols factors
-  mutate(across(c(Type, Method, Regionname, Suburb, CouncilArea), as.factor)) 
+  mutate(across(c(Type, Method, Regionname, Suburb, CouncilArea), as.factor)) %>%
+  mutate(Price = log(Price)) %>% # high outliers
 
 saveRDS(mhData, file = "data/mhData.rds")
 
@@ -60,17 +61,17 @@ mhData_5_fold <- vfold_cv(mhData_train, 5)
 
 # Models
 
-To examine this data we want to use a a more flexible model than mlr to model this complex housing data (mlr is fine on more simplier datasets).
+To examine this data we want to use a a more flexible model than mlr to model this complex housing data (mlr is fine on more simpler datasets).
 
 In order we use the flexible tree models to fit complex data. The two types that will be used here are the Regression/Classification trees and ensemble trees.
 
 Regression/Classification trees differ based on what the type of data the response variable is. Regression trees are used to model numeric responses and classification trees are used to model binary categorical data.
 
-Trees are made by using an algorithm (usually a greedy one which just picks the immediate best value available) that minimizes the sum of squared error loss to split the predictor space into regions. This process continues based on a value selected by the user.
+Trees are made by using an algorithm (usually a greedy one which just picks the immediate best value available) that minimizes the sum of squared error loss to split the predictor space into regions. This process continues recursively based on a value selected by the user.
 
 The loss functions and metrics of regression and classification trees differ as their responses are in different formats (regression can use RMSE, MAD, R-sq and classification uses accuracy or log-loss).
 
-While the Regression tree is useful it does have some weaknesses, such as being very reliant on the data give. Its sensitivity to the data and reliance on selecting strong initial predictors makes the tree makes the data have higher variance and is more correlated with each other. Ensemble models get rid of the weakness of the data due to getting predictors (by averaging or other methods) from multiple trees each constructing from a sample of the data. Random forests in particular use a random number and assortment of predictors to reduce the reliance and correlation of the trees.
+While the Regression tree is useful it does have some weaknesses, such as being very reliant on the data give. Its sensitivity to the data and reliance on selecting strong initial predictors makes the tree makes the data have higher variance and is more correlated with each other. Ensemble models get rid of the weakness of the data due to getting predictors (by averaging or other methods) from multiple reg/classification trees each constructing from a sample of the data (variance is lower). Random forests in particular use a random number and assortment of predictors to reduce the reliance on the select observations and prevents over-fitting vs just one tree.
 
 ## Recipe for the trees, impute here
 
@@ -83,10 +84,80 @@ mh_rec <- recipe(Price ~ ., data = mhData_train) %>%
 
 ## Models for Regression and Random Forest model
 
-We use the RMSE as the metric as it.
+I use the RMSE and MAD as the metric as RMSE penalizes the errors and MAD helps look at the outliers (although that might be covered by the earlier log operation on price).
+The RMSE will the one I use the most.
 
 
 ## Fitting the model to get the best of each type
 
+### Reg tree
 
+Workflow for tree
+
+```{r}
+tree_mod <- decision_tree(tree_depth = tune(),
+                          min_n = 20,
+                          cost_complexity = tune()) %>%
+  set_engine("rpart") %>%
+  set_mode("regression")
+
+tree_wkf <- workflow() %>% add_recipe(mh_rec) %>%
+  add_model(tree_mod)
+```
+
+Fit workflow on folds
+
+```{r}
+tree_grid <- grid_regular(cost_complexity(),
+                          tree_depth(),
+                          levels = c(10, 5))
+tree_fits <- tree_wkf %>% 
+  tune_grid(resamples = mhData_5_fold,
+            grid = tree_grid)
+
+tree_best_params <- select_best(tree_fits, metric = rmse)
+
+tree_final_wkf <- tree_wkf %>% finalize_workflow(tree_best_params)
+
+tree_final_fit <- tree_final_wkf %>% last_fit(mhData_split, metrics = metric_set(rmse, mae))
+```
+
+### Random Forest
+
+Workflow for random forest
+
+```{r}
+rf_spec <- rand_forest(mtry = tune()) %>% 
+  set_engine("ranger", importance = "impurity") %>%
+  set_mode("regression")
+
+rf_wkf <- workflow() %>% 
+  add_recipe(bike_rec1) %>%
+  add_model(rf_spec)
+```
+
+Fit workflow on folds
+
+```{r}
+rf_fit <- rf_wkf %>% tune_grid(resamples = bike_10_fold, 
+                                 grid = 10)
+
+rf_best_params <- select_best(rf_fit, metric = "rmse")
+
+rf_final_wkf <- rf_wkf %>% finalize_workflow(rf_best_params)
+rf_final_fit <- rf_final_wkf %>% last_fit(bike_split, metrics = metric_set(rmse, mae))
+```
+
+### Finding best model in each of the models
+
+```{r}
+rbind(
+  tree_final_fit %>%
+    collect_metrics() %>% 
+    mutate(Model = "TREE", .before = ".metric"),
+  rf_final_fit %>%
+    collect_metrics() %>% 
+    mutate(Model = "RF", .before = ".metric")  
+)
+```
 ## Best model gets fitted to the entire data, saved with bundle
