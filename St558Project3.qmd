@@ -40,9 +40,11 @@ mhData <- mhData %>%
   select(-c(Address, SellerG)) %>%
   # Making some cols factors
   mutate(across(c(Type, Method, Regionname, Suburb, CouncilArea), as.factor)) %>%
-  mutate(Price = log(Price)) %>% # high outliers
+  # high outliers
+  mutate(Price = log(Price)) %>%
+  mutate(Date = dmy(Date))
 
-saveRDS(mhData, file = "data/mhData.rds")
+#saveRDS(mhData, file = "data/mhData.rds")
 
 
 ```
@@ -95,6 +97,7 @@ The RMSE will the one I use the most.
 Workflow for tree
 
 ```{r}
+#| eval = FALSE
 tree_mod <- decision_tree(tree_depth = tune(),
                           min_n = 20,
                           cost_complexity = tune()) %>%
@@ -108,49 +111,58 @@ tree_wkf <- workflow() %>% add_recipe(mh_rec) %>%
 Fit workflow on folds
 
 ```{r}
+#| eval = FALSE
 tree_grid <- grid_regular(cost_complexity(),
                           tree_depth(),
                           levels = c(10, 5))
 tree_fits <- tree_wkf %>% 
   tune_grid(resamples = mhData_5_fold,
-            grid = tree_grid)
+            grid = tree_grid,
+            metrics = metric_set(rmse, mae))
 
-tree_best_params <- select_best(tree_fits, metric = rmse)
+tree_best_params <- select_best(tree_fits, metric = "rmse")
 
 tree_final_wkf <- tree_wkf %>% finalize_workflow(tree_best_params)
 
 tree_final_fit <- tree_final_wkf %>% last_fit(mhData_split, metrics = metric_set(rmse, mae))
 ```
 
+
 ### Random Forest
 
 Workflow for random forest
 
 ```{r}
-rf_spec <- rand_forest(mtry = tune()) %>% 
-  set_engine("ranger", importance = "impurity") %>%
+#| eval = FALSE
+rf_spec <- rand_forest(mtry = tune(),
+                       min_n = tune()) %>% 
+  set_engine("ranger") %>%
   set_mode("regression")
 
 rf_wkf <- workflow() %>% 
-  add_recipe(bike_rec1) %>%
+  add_recipe(mh_rec) %>%
   add_model(rf_spec)
 ```
+
 
 Fit workflow on folds
 
 ```{r}
-rf_fit <- rf_wkf %>% tune_grid(resamples = bike_10_fold, 
-                                 grid = 10)
+#| eval = FALSE
+rf_fit <- rf_wkf %>% tune_grid(resamples = mhData_5_fold, 
+                                 grid = 10, 
+                               metrics = metric_set(rmse, mae))
 
 rf_best_params <- select_best(rf_fit, metric = "rmse")
 
 rf_final_wkf <- rf_wkf %>% finalize_workflow(rf_best_params)
-rf_final_fit <- rf_final_wkf %>% last_fit(bike_split, metrics = metric_set(rmse, mae))
+rf_final_fit <- rf_final_wkf %>% last_fit(mhData_split, metrics = metric_set(rmse, mae))
 ```
 
 ### Finding best model in each of the models
 
 ```{r}
+#| eval = FALSE
 rbind(
   tree_final_fit %>%
     collect_metrics() %>% 
@@ -160,4 +172,28 @@ rbind(
     mutate(Model = "RF", .before = ".metric")  
 )
 ```
+TREE	rmse	standard	0.2346472	pre0_mod0_post0
+TREE	mae	standard	0.1728023	pre0_mod0_post0
+RF	rmse	standard	0.1999172	pre0_mod0_post0
+RF	mae	standard	0.1432632	pre0_mod0_post0
+
+Random forest models looks better than the regression tree model in all metrics.
+
 ## Best model gets fitted to the entire data, saved with bundle
+
+```{r}
+#| eval = FALSE
+rf_final_model_full <- rf_final_wkf %>%
+  fit(data = mhData)
+
+rf_model_full <- extract_fit_engine(rf_final_model_full)
+```
+
+```{r}
+#| eval = FALSE
+rf_bundle <- bundle(rf_final_model_full)
+saveRDS(rf_bundle, "rf_bundle.rds")
+```
+
+
+
