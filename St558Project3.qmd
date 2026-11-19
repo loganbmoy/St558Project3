@@ -133,7 +133,10 @@ tree_final_fit <- tree_final_wkf %>% last_fit(mhData_split, metrics = metric_set
 Workflow for random forest
 
 ```{r}
+<<<<<<< HEAD
 #| eval = FALSE
+=======
+>>>>>>> 99ba8b722d5e33d08cfa97a8a87fa0682012f116
 rf_spec <- rand_forest(mtry = tune(),
                        min_n = tune()) %>% 
   set_engine("ranger") %>%
@@ -148,7 +151,10 @@ rf_wkf <- workflow() %>%
 Fit workflow on folds
 
 ```{r}
+<<<<<<< HEAD
 #| eval = FALSE
+=======
+>>>>>>> 99ba8b722d5e33d08cfa97a8a87fa0682012f116
 rf_fit <- rf_wkf %>% tune_grid(resamples = mhData_5_fold, 
                                  grid = 10, 
                                metrics = metric_set(rmse, mae))
@@ -172,17 +178,23 @@ rbind(
     mutate(Model = "RF", .before = ".metric")  
 )
 ```
+<<<<<<< HEAD
 TREE	rmse	standard	0.2346472	pre0_mod0_post0
 TREE	mae	standard	0.1728023	pre0_mod0_post0
 RF	rmse	standard	0.1999172	pre0_mod0_post0
 RF	mae	standard	0.1432632	pre0_mod0_post0
+=======
+>>>>>>> 99ba8b722d5e33d08cfa97a8a87fa0682012f116
 
 Random forest models looks better than the regression tree model in all metrics.
 
 ## Best model gets fitted to the entire data, saved with bundle
 
 ```{r}
+<<<<<<< HEAD
 #| eval = FALSE
+=======
+>>>>>>> 99ba8b722d5e33d08cfa97a8a87fa0682012f116
 rf_final_model_full <- rf_final_wkf %>%
   fit(data = mhData)
 
@@ -190,7 +202,10 @@ rf_model_full <- extract_fit_engine(rf_final_model_full)
 ```
 
 ```{r}
+<<<<<<< HEAD
 #| eval = FALSE
+=======
+>>>>>>> 99ba8b722d5e33d08cfa97a8a87fa0682012f116
 rf_bundle <- bundle(rf_final_model_full)
 saveRDS(rf_bundle, "rf_bundle.rds")
 ```
