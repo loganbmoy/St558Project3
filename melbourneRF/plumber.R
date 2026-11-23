@@ -86,7 +86,7 @@ function(Suburb = names(which.max(table(mhData$Suburb))),
 #* Examples
 #* http://127.0.0.1:7968/pred?Suburb=Richmond&Rooms=3&Bathroom=2&Car=1
 #* 
-#* http://127.0.0.1:7968/pred?Suburb=Abbotsford&Rooms=3&Type=h&Method=S&Distance=2.5&Postcode=3121&Bedroom2=2&Bathroom=2&Car=2&Landsize=150&BuildingArea=150&YearBuilt=2000&CouncilArea=Yarra%20City%20Council&Lattitude=-37&Longtitude=150&Regionname=Eastern%20Metropolitan&Propertycount=4019&Date_month=2&Date_dow=3&Date_year=2017
+#* http://127.0.0.1:7968/pred?Suburb=Abbotsford&Rooms=3&Type=h&Method=S&Distance=2.5&Postcode=3121&Bedroom2=2&Bathroom=2&Car=2&Landsize=150&BuildingArea=150&YearBuilt=2000&CouncilArea=Yarra%20City%20Council&Lattitude=-37&Longtitude=150&Regionname=Eastern%20Metropolitan&Propertycount=4019&Date_month=2&Date_day=3&Date_year=2017
 #* 
 #* http://127.0.0.1:7968/pred?Type=t&Bathroom=2&Car=1&YearBuilt=1990
 
