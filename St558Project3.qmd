@@ -173,13 +173,12 @@ rbind(
     mutate(Model = "RF", .before = ".metric")  
 )
 ```
-<<<<<<< HEAD
+
 TREE	rmse	standard	0.2346472	pre0_mod0_post0
 TREE	mae	standard	0.1728023	pre0_mod0_post0
 RF	rmse	standard	0.1999172	pre0_mod0_post0
 RF	mae	standard	0.1432632	pre0_mod0_post0
-=======
->>>>>>> 99ba8b722d5e33d08cfa97a8a87fa0682012f116
+
 
 Random forest models looks better than the regression tree model in all metrics.
 
@@ -196,7 +195,7 @@ rf_model_full <- extract_fit_engine(rf_final_model_full)
 ```{r}
 #| eval = FALSE
 rf_bundle <- bundle(rf_final_model_full)
-saveRDS(rf_bundle, "rf_bundle.rds")
+saveRDS(rf_bundle, "data/rf_bundle.rds")
 ```
 
 
