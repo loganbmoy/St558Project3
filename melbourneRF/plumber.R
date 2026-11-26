@@ -10,9 +10,9 @@ library(lubridate)
 #* @apiTitle Plumber Example API
 #* @apiDescription Plumber example description.
 
-mhData <- readRDS("../data/mhData.rds")
+mhData <- readRDS("data/mhData.rds")
 
-rf_bundle <- readRDS("../data/rf_bundle.rds")
+rf_bundle <- readRDS("data/rf_bundle.rds")
 
 rf_model <- unbundle(rf_bundle)
 
