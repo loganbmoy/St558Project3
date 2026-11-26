@@ -3,6 +3,7 @@
 .RData
 .Ruserdata
 rf_bundle.rds
+*.tar
 
 /.quarto/
 **/*.quarto_ipynb
